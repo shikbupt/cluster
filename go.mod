@@ -2,7 +2,10 @@ module github.com/shikbupt/cluster
 
 go 1.19
 
-require github.com/hashicorp/serf v0.10.1
+require (
+	github.com/hashicorp/serf v0.10.1
+	github.com/serialx/hashring v0.0.0-20200727003509-22c0c7ab6b1b
+)
 
 require (
 	github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da // indirect

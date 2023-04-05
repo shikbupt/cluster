@@ -2,6 +2,7 @@ package cluster
 
 import (
 	"context"
+	"time"
 
 	"github.com/hashicorp/serf/serf"
 )
@@ -20,6 +21,10 @@ func NewGossip(peers []string) (*GossipMembership, error) {
 		peersAddress: peers,
 		Config:       serf.DefaultConfig(),
 	}
+	g.Config.ReapInterval = 5 * time.Second
+	g.Config.ReconnectTimeout = 15 * time.Second
+	g.Config.ReconnectInterval = 5 * time.Second
+	g.Config.TombstoneTimeout = 15 * time.Second
 	g.eventCh = make(chan serf.Event, 16)
 
 	g.Config.EventCh = g.eventCh
@@ -82,7 +87,11 @@ func (g *GossipMembership) loop(ctx context.Context, eventCh chan Event) {
 					Payload: userEvent.Payload,
 				}
 			}
-		default:
+			if queryEvent, ok := ev.(*serf.Query); ok {
+				eventCh <- QueryEvent{
+					queryEvent,
+				}
+			}
 		}
 	}
 }

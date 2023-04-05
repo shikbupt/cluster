@@ -1,5 +1,7 @@
 package cluster
 
+import "github.com/hashicorp/serf/serf"
+
 type Event interface{}
 
 type memberChangeEvent struct {
@@ -21,6 +23,10 @@ type MemberRemoveEvent struct {
 type BroadcastEvent struct {
 	Name    string
 	Payload []byte
+}
+
+type QueryEvent struct {
+	*serf.Query
 }
 
 type Members struct {
