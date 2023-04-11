@@ -53,6 +53,12 @@ func NewCandidate(selfip string, peers []string, leaderAction LeaderAction, foll
 	l.followerAction = followerAction
 
 	l.self = selfip
+	for _, peer := range peers {
+		if peer == l.self {
+			l.peers = peers
+			return l, nil
+		}
+	}
 	l.peers = append(peers, l.self)
 	return l, nil
 }
@@ -80,8 +86,8 @@ func (l *Candidate) RemoveNodes(node ...string) {
 	}
 }
 
-func (l *Candidate) Run(ctx context.Context) error {
-	g, _ := NewGossip(l.peers)
+func (l *Candidate) Run(ctx context.Context, options ...Option) error {
+	g, _ := NewGossip(l.peers, options...)
 	l.gossip = g
 	watch, err := l.gossip.Watch(ctx)
 	if err != nil {

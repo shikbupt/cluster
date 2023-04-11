@@ -2,10 +2,37 @@ package cluster
 
 import (
 	"context"
+	"log"
 	"time"
 
 	"github.com/hashicorp/serf/serf"
 )
+
+type config struct {
+	bindAddr string
+	logger   *log.Logger
+}
+
+func defaultConfig() config {
+	return config{
+		bindAddr: "0.0.0.0",
+		logger:   nil,
+	}
+}
+
+type Option func(c *config)
+
+func WithBindAddr(ip string) Option {
+	return func(c *config) {
+		c.bindAddr = ip
+	}
+}
+
+func WithLogger(l *log.Logger) Option {
+	return func(c *config) {
+		c.logger = l
+	}
+}
 
 type GossipMembership struct {
 	peersAddress   []string
@@ -16,7 +43,7 @@ type GossipMembership struct {
 	latestLTtime   serf.LamportTime
 }
 
-func NewGossip(peers []string) (*GossipMembership, error) {
+func NewGossip(peers []string, options ...Option) (*GossipMembership, error) {
 	g := &GossipMembership{
 		peersAddress: peers,
 		Config:       serf.DefaultConfig(),
@@ -28,6 +55,14 @@ func NewGossip(peers []string) (*GossipMembership, error) {
 	g.eventCh = make(chan serf.Event, 16)
 
 	g.Config.EventCh = g.eventCh
+
+	config := defaultConfig()
+	for _, o := range options {
+		o(&config)
+	}
+	g.Config.Logger = config.logger
+	g.Config.MemberlistConfig.Logger = config.logger
+	g.Config.MemberlistConfig.BindAddr = config.bindAddr
 
 	return g, nil
 }
