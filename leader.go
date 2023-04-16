@@ -3,7 +3,6 @@ package cluster
 import (
 	"context"
 	"sync"
-	"time"
 
 	"github.com/hashicorp/serf/serf"
 	"github.com/serialx/hashring"
@@ -46,8 +45,6 @@ func NewCandidate(selfip string, peers []string, leaderAction LeaderAction, foll
 		hashRing:        hashring.New([]string{}),
 		leaderMayChange: make(chan struct{}),
 		current:         Nobody,
-		broadcastEvent:  make(chan BroadcastEvent),
-		queryEvent:      make(chan QueryEvent),
 	}
 	l.leaderAction = leaderAction
 	l.followerAction = followerAction
@@ -122,6 +119,9 @@ func (l *Candidate) Run(ctx context.Context, options ...Option) error {
 				oldCancel()
 				roleSwitch = true
 				l.current = Leader
+
+				l.broadcastEvent = nil
+				l.queryEvent = nil
 				go l.leaderAction(lctx,
 					func(b BroadcastEvent) error {
 						return l.gossip.serfClient.UserEvent(b.Name, b.Payload, true)
@@ -138,6 +138,9 @@ func (l *Candidate) Run(ctx context.Context, options ...Option) error {
 				oldCancel()
 				roleSwitch = true
 				l.current = Follower
+
+				l.broadcastEvent = make(chan BroadcastEvent)
+				l.queryEvent = make(chan QueryEvent)
 				go l.followerAction(lctx, l.broadcastEvent, l.queryEvent)
 			}
 		}
@@ -158,16 +161,14 @@ func (l *Candidate) loop(ctx context.Context) {
 				l.RemoveNodes(ev.IP...)
 				l.leaderMayChange <- struct{}{}
 			case BroadcastEvent:
-				timeout := time.After(1 * time.Second)
 				select {
 				case l.broadcastEvent <- ev:
-				case <-timeout:
+				default:
 				}
 			case QueryEvent:
-				timeout := time.After(1 * time.Second)
 				select {
 				case l.queryEvent <- ev:
-				case <-timeout:
+				default:
 				}
 			default:
 			}
